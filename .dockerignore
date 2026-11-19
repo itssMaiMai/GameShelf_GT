@@ -1,7 +1,0 @@
-.git
-imagenes
-gameshelf-db.lock.db
-GameShelf/
-*.bat
-*.sh
-!docker-entrypoint.sh
