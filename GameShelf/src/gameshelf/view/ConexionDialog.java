@@ -32,7 +32,8 @@ public class ConexionDialog extends JDialog {
 
     private final transient ConexionDB conexion;
     private final JRadioButton rdbLocal = new JRadioButton("Archivo local (en esta PC)");
-    private final JRadioButton rdbServidor = new JRadioButton("Servidor de la red");
+    private final JRadioButton rdbServidor = new JRadioButton("Servidor H2 de la red");
+    private final JRadioButton rdbMariaDB = new JRadioButton("Servidor MariaDB / MySQL");
     private final JTextField txtHost = new JTextField("localhost", 18);
     private final JTextField txtPuerto = new JTextField("9092", 6);
     private final JTextField txtBase = new JTextField(ConexionDB.BASE_POR_DEFECTO, 18);
@@ -61,8 +62,16 @@ public class ConexionDialog extends JDialog {
         ButtonGroup grupo = new ButtonGroup();
         grupo.add(rdbLocal);
         grupo.add(rdbServidor);
+        grupo.add(rdbMariaDB);
         rdbLocal.addActionListener(e -> actualizarCampos());
-        rdbServidor.addActionListener(e -> actualizarCampos());
+        rdbServidor.addActionListener(e -> {
+            if ("3306".equals(txtPuerto.getText().trim())) txtPuerto.setText("9092");
+            actualizarCampos();
+        });
+        rdbMariaDB.addActionListener(e -> {
+            if ("9092".equals(txtPuerto.getText().trim())) txtPuerto.setText("3306");
+            actualizarCampos();
+        });
 
         JPanel form = new JPanel(new GridBagLayout());
         form.setBorder(BorderFactory.createEmptyBorder(14, 16, 6, 16));
@@ -83,6 +92,8 @@ public class ConexionDialog extends JDialog {
                 + "<br>Contiene todo, incluidas las im\u00e1genes: se puede copiar y enviar.</small></html>"), c);
         c.gridy = fila++;
         form.add(rdbServidor, c);
+        c.gridy = fila++;
+        form.add(rdbMariaDB, c);
         c.gridwidth = 1;
         fila = campo(form, c, fila, "Direcci\u00f3n (IP o nombre)", txtHost);
         fila = campo(form, c, fila, "Puerto", txtPuerto);
@@ -121,7 +132,11 @@ public class ConexionDialog extends JDialog {
     private void precargar() {
         String url = conexion.getUrl();
         if (conexion.esRemota()) {
-            rdbServidor.setSelected(true);
+            if (conexion.esMariaDB()) {
+                rdbMariaDB.setSelected(true);
+            } else {
+                rdbServidor.setSelected(true);
+            }
             String resto = url.substring(url.indexOf("//") + 2);
             int barra = resto.indexOf('/');
             String hostPuerto = barra < 0 ? resto : resto.substring(0, barra);
@@ -129,6 +144,7 @@ public class ConexionDialog extends JDialog {
             int dosPuntos = hostPuerto.lastIndexOf(':');
             txtHost.setText(dosPuntos < 0 ? hostPuerto : hostPuerto.substring(0, dosPuntos));
             if (dosPuntos >= 0) txtPuerto.setText(hostPuerto.substring(dosPuntos + 1));
+            else if (conexion.esMariaDB()) txtPuerto.setText("3306");
             txtBase.setText(base);
             txtUsuario.setText(conexion.getUsuario());
             txtClave.setText(conexion.getClave());
@@ -139,7 +155,7 @@ public class ConexionDialog extends JDialog {
     }
 
     private void actualizarCampos() {
-        boolean servidor = rdbServidor.isSelected();
+        boolean servidor = rdbServidor.isSelected() || rdbMariaDB.isSelected();
         for (javax.swing.JComponent c : Arrays.<javax.swing.JComponent>asList(txtHost, txtPuerto, txtBase, txtUsuario, txtClave)) {
             c.setEnabled(servidor);
         }
@@ -158,12 +174,15 @@ public class ConexionDialog extends JDialog {
                 try {
                     puerto = Integer.parseInt(txtPuerto.getText().trim());
                 } catch (NumberFormatException e) {
-                    throw new IllegalArgumentException("El puerto debe ser un n\u00famero (por ejemplo, 9092).");
+                    throw new IllegalArgumentException("El puerto debe ser un n\u00famero (por ejemplo, 3306 o 9092).");
                 }
                 if (txtHost.getText().trim().isEmpty() || txtBase.getText().trim().isEmpty()) {
                     throw new IllegalArgumentException("Complet\u00e1 la direcci\u00f3n y el nombre de la base.");
                 }
-                conexion.setUrl(ConexionDB.urlServidor(txtHost.getText(), puerto, txtBase.getText()));
+                String nuevaUrl = rdbMariaDB.isSelected()
+                        ? ConexionDB.urlMariaDB(txtHost.getText(), puerto, txtBase.getText())
+                        : ConexionDB.urlServidor(txtHost.getText(), puerto, txtBase.getText());
+                conexion.setUrl(nuevaUrl);
                 conexion.setCredenciales(txtUsuario.getText(), new String(txtClave.getPassword()));
             }
             conexion.conectar();

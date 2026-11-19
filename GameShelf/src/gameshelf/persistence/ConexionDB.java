@@ -72,6 +72,10 @@ public class ConexionDB {
         return "jdbc:h2:tcp://" + host.trim() + ":" + puerto + "/" + base.trim();
     }
 
+    public static String urlMariaDB(String host, int puerto, String base) {
+        return "jdbc:mariadb://" + host.trim() + ":" + puerto + "/" + base.trim();
+    }
+
     private static String valor(String propiedadSistema, String delArchivo, String porDefecto) {
         String s = System.getProperty(propiedadSistema);
         if (s != null && !s.trim().isEmpty()) return s.trim();
@@ -88,11 +92,12 @@ public class ConexionDB {
         if (url == null || url.trim().isEmpty()) {
             throw new IllegalArgumentException("La dirección de la base de datos no puede estar vacía.");
         }
-        if (!url.trim().startsWith("jdbc:h2:")) {
-            throw new IllegalArgumentException("Solo se admiten bases H2 (jdbc:h2:...).");
+        String u = url.trim();
+        if (!u.startsWith("jdbc:h2:") && !u.startsWith("jdbc:mariadb:") && !u.startsWith("jdbc:mysql:")) {
+            throw new IllegalArgumentException("Solo se admiten bases H2 (jdbc:h2:...) o MariaDB (jdbc:mariadb:...).");
         }
         cerrar();
-        this.url = url.trim();
+        this.url = u;
     }
 
     public String getUsuario() {
@@ -109,8 +114,12 @@ public class ConexionDB {
         this.clave = clave == null ? "" : clave;
     }
 
+    public boolean esMariaDB() {
+        return url.startsWith("jdbc:mariadb:") || url.startsWith("jdbc:mysql:");
+    }
+
     public boolean esRemota() {
-        return url.contains(":tcp:") || url.contains(":ssl:");
+        return url.contains(":tcp:") || url.contains(":ssl:") || esMariaDB();
     }
 
     /** Texto corto para mostrar al usuario. */
@@ -118,7 +127,7 @@ public class ConexionDB {
         if (esRemota()) {
             String s = url.substring(url.indexOf("//") + 2);
             int corte = s.indexOf('/');
-            return "servidor " + (corte < 0 ? s : s.substring(0, corte));
+            return (esMariaDB() ? "MariaDB " : "servidor ") + (corte < 0 ? s : s.substring(0, corte));
         }
         return "archivo local";
     }
@@ -130,14 +139,15 @@ public class ConexionDB {
     public synchronized Connection conectar() throws SQLException {
         if (conexion == null || conexion.isClosed() || !conexion.isValid(2)) {
             cerrar();
+            boolean mariadb = esMariaDB();
             try {
-                Class.forName("org.h2.Driver");
+                Class.forName(mariadb ? "org.mariadb.jdbc.Driver" : "org.h2.Driver");
             } catch (ClassNotFoundException e) {
-                throw new SQLException("Falta el controlador de base de datos H2.", e);
+                throw new SQLException("Falta el controlador de base de datos " + (mariadb ? "MariaDB." : "H2."), e);
             }
             Connection nueva = DriverManager.getConnection(url, usuario, clave);
             try {
-                Esquema.crear(nueva);
+                Esquema.crear(nueva, mariadb);
             } catch (SQLException e) {
                 try {
                     nueva.close();
