@@ -23,6 +23,8 @@ import javax.swing.JTextArea;
 import javax.swing.JSpinner;
 import javax.swing.JTextField;
 import javax.swing.KeyStroke;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.SpinnerNumberModel;
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
@@ -50,6 +52,7 @@ public class SeguimientoDialog extends JDialog {
     private final JSpinner spnCalificacion = new JSpinner(new SpinnerNumberModel(0, 0, 10, 1));
     private final transient Integer calificacionActual;
     private boolean guardado;
+    private String mensaje = "";
 
     /** @param calificacionActual la calificación que el usuario ya le dio al juego, o null si todavía no lo calificó. */
     public SeguimientoDialog(JFrame owner, VideojuegoController controller, Videojuego juego, Seguimiento actual,
@@ -69,6 +72,12 @@ public class SeguimientoDialog extends JDialog {
             txtNotas.setText(actual.getNotas());
             txtNotas.setCaretPosition(0);
         }
+        // Se conecta después de cargar los datos, para que abrir el diálogo no cambie nada por sí solo.
+        txtHoras.getDocument().addDocumentListener(new DocumentListener() {
+            @Override public void insertUpdate(DocumentEvent e) { horasEscritas(); }
+            @Override public void removeUpdate(DocumentEvent e) { horasEscritas(); }
+            @Override public void changedUpdate(DocumentEvent e) { horasEscritas(); }
+        });
         pack();
         setMinimumSize(getSize());
         setLocationRelativeTo(owner);
@@ -86,6 +95,26 @@ public class SeguimientoDialog extends JDialog {
 
     public boolean isGuardado() {
         return guardado;
+    }
+
+    /** Mensaje del resultado de guardar (incluye el aviso si el estado pasó a Jugando por cargar horas). */
+    public String getMensaje() {
+        return mensaje;
+    }
+
+    /** Si se escriben horas mayores que 0 y el estado es "Sin estado" o "Pendiente", pasa a "Jugando". */
+    private void horasEscritas() {
+        Object elegido = cmbEstado.getSelectedItem();
+        if (!SIN_ESTADO.equals(elegido) && elegido != Estado.PENDIENTE) {
+            return;
+        }
+        try {
+            if (Double.parseDouble(txtHoras.getText().trim().replace(',', '.')) > 0) {
+                cmbEstado.setSelectedItem(Estado.JUGANDO);
+            }
+        } catch (NumberFormatException e) {
+            // todavía no es un número válido: no se cambia nada
+        }
     }
 
     private void construir() {
@@ -172,6 +201,7 @@ public class SeguimientoDialog extends JDialog {
             return;
         }
         guardado = true;
+        mensaje = r.getMensaje();
         int puntos = ((Number) spnCalificacion.getValue()).intValue();
         if (puntos > 0 && (calificacionActual == null || puntos != calificacionActual.intValue())) {
             Resultado<Void> calificacion = controller.calificar(juego.getId(), puntos);

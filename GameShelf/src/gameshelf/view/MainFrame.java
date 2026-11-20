@@ -43,6 +43,8 @@ import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.time.format.DateTimeFormatter;
@@ -102,6 +104,13 @@ public class MainFrame extends JFrame {
         configurarEventos();
 
         setDefaultCloseOperation(EXIT_ON_CLOSE);
+        // Sin botón "Actualizar": los cambios que hagan otros usuarios se leen solos al volver a esta ventana o cambiar de pestaña.
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowActivated(WindowEvent e) {
+                refrescar(null);
+            }
+        });
         setSize(1150, 720);
         setMinimumSize(new Dimension(960, 600));
         setLocationRelativeTo(null);
@@ -159,9 +168,6 @@ public class MainFrame extends JFrame {
         btnFavorito.addActionListener(e -> alternarFavorito());
         btnCalificar.setToolTipText("Califica un juego o cambia tu calificaci\u00f3n (es privada)");
         btnCalificar.addActionListener(e -> calificar());
-        JButton btnActualizar = new JButton("Actualizar");
-        btnActualizar.setToolTipText("Vuelve a leer la biblioteca compartida (por si otro usuario hizo cambios)");
-        btnActualizar.addActionListener(e -> actualizar());
 
         JPanel botones = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         botones.add(btnAgregar);
@@ -170,8 +176,6 @@ public class MainFrame extends JFrame {
         botones.add(btnCalificar);
         botones.add(btnEditar);
         botones.add(btnEliminar);
-        botones.add(Box.createHorizontalStrut(16));
-        botones.add(btnActualizar);
 
         JPanel estado = new JPanel(new BorderLayout());
         estado.add(lblMensaje, BorderLayout.WEST);
@@ -191,9 +195,7 @@ public class MainFrame extends JFrame {
         pestanas = new JTabbedPane();
         pestanas.addTab("Biblioteca", panelBiblioteca);
         pestanas.addTab("Ranking de juegos", ranking);
-        pestanas.addChangeListener(e -> {
-            if (pestanas.getSelectedComponent() == ranking) ranking.refrescar();
-        });
+        pestanas.addChangeListener(e -> refrescar(null));
 
         getContentPane().setLayout(new BorderLayout());
         getContentPane().add(cabecera, BorderLayout.NORTH);
@@ -400,7 +402,7 @@ public class MainFrame extends JFrame {
         dialogo.setVisible(true);
         if (dialogo.isGuardado()) {
             refrescar(seleccionado.getId());
-            mensaje("Guardaste tu seguimiento de \"" + seleccionado.getNombre() + "\".");
+            mensaje("\"" + seleccionado.getNombre() + "\": " + dialogo.getMensaje());
         }
     }
 
@@ -461,11 +463,6 @@ public class MainFrame extends JFrame {
             refrescar(calificado.getId());
             mensaje("Calificaste \"" + calificado.getNombre() + "\".");
         }
-    }
-
-    private void actualizar() {
-        refrescar(null);
-        mensaje("Biblioteca actualizada.");
     }
 
     private void cerrarSesion() {

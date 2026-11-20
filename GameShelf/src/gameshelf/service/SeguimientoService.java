@@ -39,6 +39,8 @@ public class SeguimientoService {
         s.setFavorito(favorito);
         s.setNotas(notas);
         s = normalizarYValidar(s);
+        Seguimiento anterior = seguimientos.deUsuario(actor.getId()).get(videojuegoId);
+        s.setEstado(estadoSegunHoras(s.getEstado(), s.getHorasJugadas(), anterior));
         s.setUsuarioId(actor.getId());
         s.setVideojuegoId(videojuegoId);
         seguimientos.guardar(s);
@@ -84,6 +86,23 @@ public class SeguimientoService {
             return Collections.emptyMap();
         }
         return new HashMap<>(seguimientos.deUsuario(actor.getId()));
+    }
+
+    /**
+     * Regla: cuando el usuario le pone horas de juego a un juego que está Pendiente o sin estado, pasa automáticamente a
+     * Jugando. Solo se aplica cuando las horas se cargan o cambian, así que no se repite al guardar solo las notas ni
+     * afecta a los juegos Terminado, Abandonado o ya Jugando.
+     *
+     * @param pedido el estado que llega para guardar (null = sin estado).
+     * @param anterior el seguimiento que el usuario ya tenía de ese juego (null si no tenía).
+     */
+    static Estado estadoSegunHoras(Estado pedido, Double horas, Seguimiento anterior) {
+        boolean pendienteOSinEstado = pedido == null || pedido == Estado.PENDIENTE;
+        if (!pendienteOSinEstado || horas == null || horas <= 0) {
+            return pedido;
+        }
+        boolean cambioLasHoras = anterior == null || anterior.getHorasJugadas() == null || !anterior.getHorasJugadas().equals(horas);
+        return cambioLasHoras ? Estado.JUGANDO : pedido;
     }
 
     /** Devuelve una copia con los textos recortados; lanza ValidacionException si los datos no son válidos. */

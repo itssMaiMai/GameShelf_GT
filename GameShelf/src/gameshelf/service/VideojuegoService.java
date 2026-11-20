@@ -64,8 +64,9 @@ public class VideojuegoService {
             throw new ValidacionException("La calificación debe estar entre 1 y 10 (0 = sin calificar todavía).");
         }
         Seguimiento propio = SeguimientoService.normalizarYValidar(personal == null ? new Seguimiento() : personal);
+        propio.setEstado(SeguimientoService.estadoSegunHoras(propio.getEstado(), propio.getHorasJugadas(), null));
         Videojuego v = prepararYValidar(videojuego);
-        v.setImagen(imagenOrigen != null ? importarImagen(imagenOrigen) : "");
+        v.setImagen(imagenOrigen != null ? importarImagen(imagenOrigen, v.getNombre()) : "");
         v.setCreadoPor(actor.getNombre());
         v.setFechaCreacion(LocalDateTime.now());
         try {
@@ -111,7 +112,7 @@ public class VideojuegoService {
         String importada = null;
         String finalImagen = anterior;
         if (imagenNueva != null) {
-            importada = importarImagen(imagenNueva);
+            importada = importarImagen(imagenNueva, v.getNombre());
             finalImagen = importada;
         } else if (quitarImagen) {
             finalImagen = "";
@@ -125,6 +126,13 @@ public class VideojuegoService {
         }
         if (!anterior.isEmpty() && !anterior.equals(finalImagen)) {
             imagenes.eliminar(anterior);
+        }
+        try {
+            // Si cambió el nombre del juego, la imagen se renombra para que siga coincidiendo con él.
+            imagenes.sincronizarNombre(v.getId());
+            v.setImagen(repository.buscarPorId(v.getId()).getImagen());
+        } catch (RuntimeException e) {
+            // el cambio ya quedó guardado; si no se pudo renombrar la imagen, se reintenta al abrir la aplicación
         }
         return v;
     }
@@ -157,9 +165,9 @@ public class VideojuegoService {
         return v == null ? null : imagenes.leer(v.getImagen());
     }
 
-    private String importarImagen(Path origen) {
+    private String importarImagen(Path origen, String nombreJuego) {
         try {
-            return imagenes.importar(origen);
+            return imagenes.importar(origen, nombreJuego);
         } catch (IllegalArgumentException e) {
             throw new ValidacionException(e.getMessage());
         }

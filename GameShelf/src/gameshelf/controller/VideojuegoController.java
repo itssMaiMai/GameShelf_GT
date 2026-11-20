@@ -126,7 +126,10 @@ public class VideojuegoController {
     public Resultado<Seguimiento> guardarSeguimiento(int videojuegoId, Estado estado, Double horas, boolean favorito, String notas) {
         return ejecutar(() -> {
             Seguimiento s = seguimiento.guardar(usuarioActual, videojuegoId, estado, horas, favorito, notas);
-            return Resultado.exito("Tu seguimiento fue guardado.", s);
+            boolean pasoAJugando = s.getEstado() == Estado.JUGANDO && estado != Estado.JUGANDO;
+            return Resultado.exito(pasoAJugando
+                    ? "Tu seguimiento fue guardado. Como cargaste horas de juego, el estado pas\u00f3 a Jugando."
+                    : "Tu seguimiento fue guardado.", s);
         });
     }
 

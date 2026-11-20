@@ -35,7 +35,9 @@ public class Main {
     private static ConexionDB conexionActual;
 
     public static void main(String[] args) {
-        if (args.length > 0 && "--importar".equals(args[0])) {
+        if (args.length > 0 && "--servidor".equals(args[0])) {
+            Servidor.ejecutar(args);
+        } else if (args.length > 0 && "--importar".equals(args[0])) {
             importarDesdeConsola(args);
         } else {
             SwingUtilities.invokeLater(Main::iniciar);
@@ -74,7 +76,9 @@ public class Main {
             UsuarioRepository cuentas = new UsuarioRepository(conexion);
             CalificacionRepository calificaciones = new CalificacionRepository(conexion);
             SeguimientoRepository seguimiento = new SeguimientoRepository(conexion);
-            VideojuegoService servicioJuegos = new VideojuegoService(juegos, new AlmacenImagenes(conexion), calificaciones, seguimiento);
+            AlmacenImagenes almacen = new AlmacenImagenes(conexion);
+            renombrarImagenes(almacen);
+            VideojuegoService servicioJuegos = new VideojuegoService(juegos, almacen, calificaciones, seguimiento);
             VideojuegoController controller = new VideojuegoController(servicioJuegos, new UsuarioService(cuentas),
                     new CalificacionService(juegos, calificaciones), new SeguimientoService(juegos, seguimiento));
 
@@ -92,6 +96,19 @@ public class Main {
             JOptionPane.showMessageDialog(null, "GameShelf no pudo iniciar:\n" + e.getMessage() + causa,
                     "Error al iniciar", JOptionPane.ERROR_MESSAGE);
             System.exit(1);
+        }
+    }
+
+    /** Renombra las imágenes ya guardadas cuyo nombre no coincide con el de su juego (ver AlmacenImagenes). */
+    private static void renombrarImagenes(AlmacenImagenes almacen) {
+        try {
+            int n = almacen.sincronizarNombres();
+            if (n > 0) {
+                JOptionPane.showMessageDialog(null, "Se renombraron " + n + (n == 1 ? " imagen" : " im\u00e1genes")
+                        + " para que coincidan con el nombre de su juego.", "Im\u00e1genes", JOptionPane.INFORMATION_MESSAGE);
+            }
+        } catch (RuntimeException e) {
+            // no impide usar la aplicación; se reintenta en el próximo arranque
         }
     }
 
@@ -143,6 +160,8 @@ public class Main {
         try {
             MigradorJson.Resultado r = MigradorJson.migrar(conexion, Paths.get(args[1]).toAbsolutePath());
             System.out.println(r.resumen());
+            int renombradas = new AlmacenImagenes(conexion).sincronizarNombres();
+            System.out.println("Im\u00e1genes renombradas con el nombre de su juego: " + renombradas);
             System.out.println("Base de datos: " + conexion.getUrl());
         } catch (Exception e) {
             System.err.println("No se pudo importar: " + e.getMessage());

@@ -26,6 +26,8 @@ import javax.swing.JSpinner;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.KeyStroke;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingConstants;
 import javax.swing.filechooser.FileNameExtensionFilter;
@@ -100,6 +102,21 @@ public class JuegoDialog extends JDialog {
         return guardado;
     }
 
+    /** Si se escriben horas mayores que 0 y el estado es "Sin estado" o "Pendiente", pasa a "Jugando". */
+    private void horasEscritas() {
+        Object elegido = cmbEstado.getSelectedItem();
+        if (!SIN_ESTADO.equals(elegido) && elegido != Estado.PENDIENTE) {
+            return;
+        }
+        try {
+            if (Double.parseDouble(txtHoras.getText().trim().replace(',', '.')) > 0) {
+                cmbEstado.setSelectedItem(Estado.JUGANDO);
+            }
+        } catch (NumberFormatException e) {
+            // todavía no es un número válido: no se cambia nada
+        }
+    }
+
     private static JComboBox<Object> crearComboEstado() {
         JComboBox<Object> combo = new JComboBox<>();
         combo.addItem(SIN_ESTADO);
@@ -139,6 +156,11 @@ public class JuegoDialog extends JDialog {
             estadoHoras.add(new JLabel("Horas jugadas (opcional)  "));
             estadoHoras.add(txtHoras);
             agregarFila(form, fila++, "Estado", estadoHoras, false);
+            txtHoras.getDocument().addDocumentListener(new DocumentListener() {
+                @Override public void insertUpdate(DocumentEvent e) { horasEscritas(); }
+                @Override public void removeUpdate(DocumentEvent e) { horasEscritas(); }
+                @Override public void changedUpdate(DocumentEvent e) { horasEscritas(); }
+            });
 
             JPanel favoritoNota = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
             favoritoNota.add(chkFavorito);

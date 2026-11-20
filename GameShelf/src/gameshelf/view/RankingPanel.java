@@ -263,7 +263,7 @@ public class RankingPanel extends JPanel {
         dialogo.setVisible(true);
         if (dialogo.isGuardado()) {
             alCambiar.run();
-            mensaje("Guardaste tu seguimiento de \"" + v.getNombre() + "\".");
+            mensaje("\"" + v.getNombre() + "\": " + dialogo.getMensaje());
         }
     }
 

@@ -43,6 +43,8 @@ leer todo lo que contiene: las notas y calificaciones privadas lo son dentro de 
   un juego (se borran su imagen y los datos personales asociados). Esos botones solo existen para él.
 - **Datos personales, independientes por usuario** (nadie ve los de otros): **estado**, horas jugadas, favorito, **notas**
   ("Mi seguimiento...", que se abre también con doble clic en un juego) y **calificación** (dentro de ese mismo diálogo o con "Calificar juego..."). Un juego que el usuario nunca tocó queda **sin estado**; "Pendiente" es un estado que el usuario elige (juego que quiere jugar).
+  Regla de estado: al cargar **horas de juego** a un juego que está *Pendiente* o *sin estado*, pasa solo a **Jugando** (en el
+  formulario se ve en el momento; no pisa Terminado ni Abandonado, y no se repite si se guardan las mismas horas).
   La calificación se puede **cambiar** cuando se quiera (queda una sola por usuario y juego); "Calificar juego..." ofrece los
   juegos que todavía no calificaste y, si hay uno seleccionado, también ese para cambiarle la nota.
 - Estadísticas, filtros por estado/favoritos/calificación y "Mi nota media" usan solo los datos propios;
@@ -69,12 +71,16 @@ tenga cargada (máximo 10 valores por campo y 60 caracteres por valor).
 - **Buscador:** busca por nombre **o por desarrollador** (sin distinguir mayúsculas ni tildes), en Biblioteca y Ranking.
 
 ## Datos compartidos
-Todos los usuarios que usen la **misma base** (el mismo archivo o el mismo servidor) ven la misma biblioteca; el botón
-**Actualizar** relee los cambios hechos por otros.
+Todos los usuarios que usen la **misma base** (el mismo archivo o el mismo servidor) ven la misma biblioteca; los cambios hechos por otros se
+leen solos al volver a la ventana o al cambiar de pestaña (no hay botón "Actualizar").
 
 ## Imágenes
 Se eligen desde la PC (PNG, JPG, GIF o BMP, hasta 5 MB y 4096x4096 px) y se guardan **dentro de la base de datos**, así que
-viajan con ella y siguen disponibles aunque se mueva o borre el archivo original. Es opcional: un juego puede no tener imagen.
+viajan con ella y siguen disponibles aunque se mueva o borre el archivo original. Cada imagen se guarda con el **nombre del juego separado por guiones bajos** (sin tildes ni símbolos): "Donkey Kong 64" queda como
+`Donkey_Kong_64.jpg`, y "Crisis Core: Final Fantasy VII" como `Crisis_Core_Final_Fantasy_VII.png`. Si otro juego tiene el mismo título
+(por ejemplo en otra plataforma) se agrega un número: `Celeste_2.png`. Las imágenes que ya estaban guardadas (por ejemplo, las importadas de la
+versión anterior, que tenían nombres aleatorios) se **renombran solas** al abrir la aplicación si su nombre no coincide con el de su
+juego (se ignoran tildes, símbolos y mayúsculas); también cuando el administrador le cambia el nombre a un juego. Es opcional: un juego puede no tener imagen.
 
 ## Arquitectura
 `model` · `persistence` (ConexionDB, Esquema, repositorios con JDBC/SQL, AlmacenImagenes, MigradorJson) · `service`
